@@ -1,89 +1,97 @@
+using System;
+using System.Threading.Tasks;
 using System.Windows;
-using AutodeskIDMonitor.Services;
-using AutodeskIDMonitor.Views;
 
-namespace AutodeskIDMonitor;
-
-public partial class App : Application
+namespace AutodeskIDMonitor
 {
-    /// <summary>
-    /// Indicates if the app should start minimized to system tray
-    /// </summary>
-    public static bool StartMinimized { get; private set; } = false;
-    
-    /// <summary>
-    /// Current user's display name (from first-run setup or Windows)
-    /// </summary>
-    public static string CurrentUserDisplayName { get; private set; } = "";
-    
-    /// <summary>
-    /// Current user's email
-    /// </summary>
-    public static string CurrentUserEmail { get; private set; } = "";
-    
-    protected override void OnStartup(StartupEventArgs e)
+    public partial class App : Application
     {
-        base.OnStartup(e);
-        
-        // Check for --minimized argument (used when starting with Windows)
-        if (e.Args.Length > 0)
+        private MainWindow? _mainWindow;
+        private ApiService? _apiService;
+
+        private void Application_Startup(object sender, StartupEventArgs e)
         {
-            foreach (var arg in e.Args)
+            // Initialize settings
+            AppSettings.Load();
+
+            // Check if first run or no auth token
+            if (AppSettings.Instance.IsFirstRun || string.IsNullOrEmpty(AppSettings.Instance.AuthToken))
             {
-                if (arg.Equals("--minimized", StringComparison.OrdinalIgnoreCase) ||
-                    arg.Equals("-m", StringComparison.OrdinalIgnoreCase) ||
-                    arg.Equals("/minimized", StringComparison.OrdinalIgnoreCase))
-                {
-                    StartMinimized = true;
-                    break;
-                }
-            }
-        }
-        
-        // Initialize services
-        AdminService.Instance.Initialize();
-        ConfigService.Instance.Load();
-        
-        // Check if first-time setup is needed
-        var localStorage = new LocalStorageService();
-        
-        if (localStorage.NeedsFirstTimeSetup())
-        {
-            // Get default suggestions
-            var windowsUser = Environment.UserName;
-            if (windowsUser.Equals("User", StringComparison.OrdinalIgnoreCase))
-            {
-                windowsUser = ""; // Don't suggest generic "User"
-            }
-            
-            // Show first-run sign-in window
-            var signInWindow = new FirstTimeSetupWindow(windowsUser, "");
-            var result = signInWindow.ShowDialog();
-            
-            if (result == true && signInWindow.SetupCompleted)
-            {
-                // Save user settings
-                localStorage.SaveUserProfileSettings(signInWindow.EnteredName, signInWindow.EnteredEmail);
-                CurrentUserDisplayName = signInWindow.EnteredName;
-                CurrentUserEmail = signInWindow.EnteredEmail;
+                ShowLoginWindow();
             }
             else
             {
-                // User cancelled - use Windows username as fallback
-                if (string.IsNullOrEmpty(windowsUser) || windowsUser.Equals("User", StringComparison.OrdinalIgnoreCase))
-                {
-                    windowsUser = "Team Member"; // Better default
-                }
-                CurrentUserDisplayName = windowsUser;
-                // Still mark as needing setup later
+                // Validate existing token
+                _ = ValidateAndStartAsync();
             }
         }
-        else
+
+        private async Task ValidateAndStartAsync()
         {
-            // Load existing user settings
-            var settings = localStorage.GetUserProfileSettings();
-            CurrentUserDisplayName = settings.DisplayName;
-            CurrentUserEmail = settings.Email;
+            try
+            {
+                _apiService = new ApiService();
+                var isValid = await _apiService.ValidateTokenAsync();
+
+                if (isValid)
+                {
+                    ShowMainWindow();
+                }
+                else
+                {
+                    AppSettings.Instance.AuthToken = string.Empty;
+                    AppSettings.Save();
+                    ShowLoginWindow();
+                }
+            }
+            catch
+            {
+                ShowLoginWindow();
+            }
+        }
+
+        public void ShowLoginWindow()
+        {
+            Current.Dispatcher.Invoke(() =>
+            {
+                var loginWindow = new LoginWindow();
+                loginWindow.LoginSuccessful += OnLoginSuccessful;
+                loginWindow.Show();
+            });
+        }
+
+        private void OnLoginSuccessful(object? sender, EventArgs e)
+        {
+            if (sender is Window loginWindow)
+            {
+                loginWindow.Close();
+            }
+            ShowMainWindow();
+        }
+
+        public void ShowMainWindow()
+        {
+            Current.Dispatcher.Invoke(() =>
+            {
+                _mainWindow = new MainWindow();
+                _mainWindow.Show();
+            });
+        }
+
+        private void Application_Exit(object sender, ExitEventArgs e)
+        {
+            _apiService?.Dispose();
+            AppSettings.Save();
+        }
+
+        public static void RestartApp()
+        {
+            var appPath = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(appPath))
+            {
+                System.Diagnostics.Process.Start(appPath);
+            }
+            Current.Shutdown();
         }
     }
 }

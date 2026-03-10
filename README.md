@@ -1,149 +1,93 @@
-# Autodesk ID Monitor v2.0.0 - Complete Package
+# Autodesk ID Monitor v2.0.0 - Build Ready
 
-## Overview
+## Quick Build
 
-Complete WPF client and server package for monitoring Autodesk license usage across Tangent Landscape Architecture offices.
+### Option 1: Visual Studio 2022
+1. Open `AutodeskIDMonitor.sln`
+2. Select `Release` configuration
+3. Build → Build Solution (Ctrl+Shift+B)
+4. Output: `bin\Release\net8.0-windows\`
 
-## Package Contents
-
-```
-├── WPF Client (Windows)
-│   ├── Models/           - Data models
-│   ├── Services/         - Business logic
-│   ├── ViewModels/       - MVVM ViewModels  
-│   ├── Views/            - XAML windows
-│   ├── Controls/         - Custom controls
-│   └── *.csproj          - Project file
-│
-└── Server (Linux/Oracle Cloud)
-    ├── app.py                    - SQLite version (lightweight)
-    ├── app_postgresql.py         - PostgreSQL version (production)
-    ├── deploy_flask.sh           - SQLite deployment
-    ├── deploy_postgresql.sh      - PostgreSQL deployment
-    ├── requirements.txt          - SQLite dependencies
-    └── requirements_postgresql.txt - PostgreSQL dependencies
-```
-
-## Server Options
-
-### Option 1: SQLite (Lightweight)
-- Single file database
-- Zero configuration
-- Good for < 50 users
-- Use: `app.py`
-
-### Option 2: PostgreSQL (Production) ⭐ Recommended
-- Full ACID compliance
-- Session-based tracking
-- Better for 50+ users
-- Supports time-range queries
-- Use: `app_postgresql.py`
-
-## Deployment
-
-### Oracle Cloud Free Tier ARM
-
-```bash
-# PostgreSQL (Recommended)
-chmod +x deploy_postgresql.sh
-sudo ./deploy_postgresql.sh
-
-# OR SQLite (Simple)
-chmod +x deploy_flask.sh
-sudo ./deploy_flask.sh
-```
-
-### Configuration
-
-Edit deployment script before running:
-```bash
-DB_PASS="your-secure-password"  # Change this!
-API_KEY="your-api-key"          # Change this!
-```
-
-## WPF Client Build
-
-### Requirements
-- Windows 10/11
-- .NET 8.0 SDK
-- Visual Studio 2022 (recommended)
-
-### Build
-```bash
+### Option 2: Command Line
+```cmd
 dotnet restore
 dotnet build -c Release
 ```
 
-### Publish (Self-Contained)
-```bash
+### Option 3: Publish Self-Contained EXE
+```cmd
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
+Or run: `Publish_SelfContained.bat`
 
-Or use: `Publish_SelfContained.bat`
+---
 
-## Client Configuration
+## Requirements
+- Windows 10/11 (64-bit)
+- .NET 8.0 SDK
+- Visual Studio 2022 (recommended)
 
-After first run, configure in Settings tab:
+---
 
-| Setting | Example |
-|---------|---------|
-| Cloud API URL | http://your-server.com |
-| API Key | Tangent@2026 |
-| Country | UAE |
-| Office | Dubai |
+## Configuration
 
-## API Endpoints
+After first run, go to Settings tab and configure:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/health` | GET | Health check |
-| `/api/status` | POST | Update user status |
-| `/api/sessions` | GET | Get all active sessions |
-| `/api/activity/all` | GET | Get all users' activity today |
-| `/api/activity/date/{date}` | GET | Get activity for specific date |
-| `/api/activity/range` | GET | Get sessions in time range |
-| `/api/projects` | GET | Get active projects |
-| `/api/admin/email-usage` | GET | Detect shared licenses |
-| `/api/admin/cleanup` | POST | Close stale sessions |
-| `/api/export/csv` | GET | Export data as CSV |
+| Setting | Value |
+|---------|-------|
+| Cloud API URL | `http://141.145.153.32:5000` |
+| API Key | `Tangent@2026` |
+| Country | `UAE` |
+| Office | `Dubai` |
+
+Config file location: `%LOCALAPPDATA%\AutodeskIDMonitor\config.json`
+
+---
 
 ## Features
 
-### Client Features
 - ✅ Real-time Autodesk login monitoring
-- ✅ Revit project tracking
+- ✅ Revit project tracking with version detection
 - ✅ Meeting detection (Teams, Zoom, Webex)
 - ✅ Idle time tracking
 - ✅ Activity breakdown charts
-- ✅ Admin dashboard
+- ✅ Admin dashboard with date selection
 - ✅ Excel export
 - ✅ Auto-update support
+- ✅ System tray with minimize
 
-### Server Features
-- ✅ Session-based tracking (PostgreSQL)
-- ✅ Time-range queries
-- ✅ Daily summaries
-- ✅ Project analytics
-- ✅ Budget tracking
-- ✅ License sharing detection
-- ✅ CSV export
+---
+
+## Server
+
+Server URL: http://141.145.153.32:5000
+Server Version: Flask v2.0.0
+
+Test connection:
+```
+http://141.145.153.32:5000/api/health
+```
+
+---
 
 ## Troubleshooting
 
-### Client won't connect
-1. Verify server URL (include http://)
+### App won't start
+Run `CleanAndBuild.bat` then rebuild.
+
+### Connection issues
+1. Verify server URL includes `http://`
 2. Check API key matches server
-3. Test: `curl http://YOUR_SERVER/api/health`
+3. Test: `curl http://141.145.153.32:5000/api/health`
 
-### Server crashes
-1. Check logs: `sudo journalctl -u idmonitor -f`
-2. Verify PostgreSQL: `sudo systemctl status postgresql`
-3. Check memory: `free -h`
+### Autodesk not detected
+- Ensure Autodesk software is installed
+- Check `%LOCALAPPDATA%\Autodesk\.autodesk\loginstate.json` exists
 
-### Revit not detected
-- Ensure Revit is running with a project open
-- Check Debug tab for detection logs
+---
 
-## Support
+## Version History
 
-Contact: anshu.jalaludeen@tangentlandscape.com
+- v2.0.0 - Flask server integration, improved activity tracking
+- v1.8.0 - Auto-update, system tray
+- v1.5.0 - Activity charts, meeting detection
